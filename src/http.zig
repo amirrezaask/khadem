@@ -132,78 +132,48 @@ pub fn func(ctx: Context) anyerror!void {
     unreachable;
 }
 
-pub const Server = struct {
-    config: Config,
-    allocator: Allocator,
-    address: net.Address,
-    stream_server: net.StreamServer = undefined,
-    frames: std.ArrayList(*Connection),
-    const Connection = struct {
-        frame: @Frame(run_handler),
-    };
-    pub const Config = struct {
-        address: []const u8 = "127.0.0.1",
-        port: u16 = 8080,
-        handlers: []Handler = undefined,
-    };
+pub const Handler = fn (*Context) anyerror!void;
 
-    pub fn deinit(self: *Server) void {
-        self.stream_server.close();
-        self.stream_server.deinit();
-    }
+pub const Config = struct {
+    address: []const u8 = "127.0.0.1",
+    port: u16 = 8080,
+};
 
-    pub fn init(allocator: Allocator, config: Config) !Server {
-        return Server{
-            .allocator = allocator,
-            .config = config,
-            .address = try Address.resolveIp(config.address, config.port),
-            .frames = std.ArrayList(*Connection).init(allocator),
+pub fn Server(comptime config: Config, comptime handler: Handler) type {
+    return struct {
+        allocator: std.mem.Allocator,
+        clients: std.ArrayList(*Client),
+        const Self = @This();
+        const Client = struct {
+            frame: @Frame(handle),
         };
-    }
-    fn run_handler(self: *Server, stream: net.Stream) !void {
-        defer stream.close();
-        var context = try Context.init(self.allocator, stream);
-        context.debugPrintRequest();
-        for (self.config.handlers) |handler| {
-            if (try handler.predicate(&context)) {
-                print("Found handler\n", .{});
-                try handler.func(&context);
-                break;
+        pub fn deinit(self: *Server) void {
+            self.stream_server.close();
+            self.stream_server.deinit();
+        }
+        pub fn init(allocator: std.mem.Allocator) Self {
+            return .{ .allocator = allocator, .clients = std.ArrayList(*Client).init(allocator) };
+        }
+        fn handle(self: *Self, stream: net.Stream) !void {
+            defer stream.close();
+            var context = try Context.init(self.allocator, stream);
+            context.debugPrintRequest();
+            try handler(&context);
+        }
+
+        pub fn listen(self: *Self) !void {
+            var stream_server = StreamServer.init(.{});
+            const address = try net.Address.resolveIp(config.address, config.port);
+            try stream_server.listen(address);
+            print("Listening on: {}\n", .{address});
+            while (true) {
+                const connection = try stream_server.accept();
+                var client = try self.allocator.create(Client);
+                client.* = .{
+                    .frame = async self.handle(connection.stream),
+                };
+                try self.clients.append(client);
             }
         }
-    }
-    pub fn listen(self: *Server) !void {
-        var stream_server = StreamServer.init(.{});
-        try stream_server.listen(self.address);
-        print("Listening on: {}\n", .{self.address});
-        while (true) {
-            const connection = try stream_server.accept();
-            var conn = try self.allocator.create(Connection);
-            conn.* = .{
-                .frame = async self.run_handler(connection.stream),
-            };
-            try self.frames.append(conn);
-        }
-    }
-};
-
-pub const Handler = struct {
-    user_predicate: fn (*Context) anyerror!bool,
-    user_func: fn (*Context) anyerror!void,
-
-    pub fn func(self: Handler, ctx: *Context) anyerror!void {
-        try self.user_func(ctx);
-    }
-    pub fn predicate(self: Handler, ctx: *Context) anyerror!bool {
-        return try self.user_predicate(ctx);
-    }
-    pub fn init(
-        user_predicate: fn (*Context) anyerror!bool,
-        user_func: fn (*Context) anyerror!void,
-    ) Handler {
-        return Handler{
-            .user_predicate = user_predicate,
-            .user_func = user_func,
-        };
-    }
-};
+    };
+}
