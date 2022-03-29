@@ -23,6 +23,6 @@ pub fn main() anyerror!void {
 }
 
 fn handler(ctx: *http.Context) anyerror!void {
-    std.time.sleep(std.time.ns_per_s * 5);
+    if (std.mem.eql(u8, ctx.uri, "/sleep")) std.time.sleep(std.time.ns_per_s * 5);
     try ctx.respond(http.Status.OK, null, "some");
 }
