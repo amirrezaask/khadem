@@ -57,22 +57,22 @@ pub const Status = enum {
     }
 };
 
-pub const HTTPContext = struct {
+pub const Context = struct {
     method: Method,
     uri: []const u8,
     version: Version,
     headers: std.StringHashMap([]const u8),
     stream: net.Stream,
 
-    pub fn bodyReader(self: *HTTPContext) net.Stream.Reader {
+    pub fn bodyReader(self: *Context) net.Stream.Reader {
         return self.stream.reader();
     }
 
-    pub fn response(self: *HTTPContext) net.Stream.Writer {
+    pub fn response(self: *Context) net.Stream.Writer {
         return self.stream.writer();
     }
 
-    pub fn respond(self: *HTTPContext, status: Status, maybe_headers: ?std.StringHashMap([]const u8), body: []const u8) !void {
+    pub fn respond(self: *Context, status: Status, maybe_headers: ?std.StringHashMap([]const u8), body: []const u8) !void {
         var writer = self.response();
         try writer.print("{s} {} {s}\r\n", .{ self.version.asString(), status.asNumber(), status.asString() });
         if (maybe_headers) |headers| {
@@ -86,14 +86,14 @@ pub const HTTPContext = struct {
         _ = try writer.write(body);
     }
 
-    pub fn debugPrintRequest(self: *HTTPContext) void {
+    pub fn debugPrintRequest(self: *Context) void {
         print("method: {s}\nuri: {s}\nversion:{s}\n", .{ self.method, self.uri, self.version });
         var headers_iter = self.headers.iterator();
         while (headers_iter.next()) |entry| {
             print("{s}: {s}\n", .{ entry.key_ptr.*, entry.value_ptr.* });
         }
     }
-    pub fn init(allocator: std.mem.Allocator, stream: net.Stream) !HTTPContext {
+    pub fn init(allocator: std.mem.Allocator, stream: net.Stream) !Context {
         var first_line = try stream.reader().readUntilDelimiterAlloc(allocator, '\n', std.math.maxInt(usize));
         first_line = first_line[0 .. first_line.len - 1];
         var first_line_iter = std.mem.split(u8, first_line, " ");
@@ -113,7 +113,7 @@ pub const HTTPContext = struct {
             if (value[0] == ' ') value = value[1..];
             try headers.put(key, value);
         }
-        return HTTPContext{
+        return Context{
             .headers = headers,
             .method = try Method.fromString(method),
             .version = try Version.fromString(version),
@@ -123,41 +123,46 @@ pub const HTTPContext = struct {
     }
 };
 
-pub const HTTPServer = struct {
+pub const Server = struct {
     config: Config,
     allocator: Allocator,
     address: net.Address,
     stream_server: net.StreamServer = undefined,
     frames: std.ArrayList(*Connection),
     const Connection = struct {
-        frame: @Frame(handler),
+        frame: @Frame(run_handler),
     };
     pub const Config = struct {
         address: []const u8 = "127.0.0.1",
         port: u16 = 8080,
+        handlers: []Handler = undefined,
     };
 
-    pub fn deinit(self: *HTTPServer) void {
+    pub fn deinit(self: *Server) void {
         self.stream_server.close();
         self.stream_server.deinit();
     }
 
-    pub fn init(allocator: Allocator, config: Config) !HTTPServer {
-        return HTTPServer{
+    pub fn init(allocator: Allocator, config: Config) !Server {
+        return Server{
             .allocator = allocator,
             .config = config,
             .address = try Address.resolveIp(config.address, config.port),
             .frames = std.ArrayList(*Connection).init(allocator),
         };
     }
-    fn handler(allocator: std.mem.Allocator, stream: net.Stream) !void {
+    fn run_handler(self: *Server, stream: net.Stream) !void {
         defer stream.close();
-        var http_context = try HTTPContext.init(allocator, stream);
-        http_context.debugPrintRequest();
-
-        try http_context.respond(Status.OK, null, "Hello From ZIG");
+        var context = try Context.init(self.allocator, stream);
+        context.debugPrintRequest();
+        for (self.config.handlers) |handler| {
+            if (try handler.predicate(context)) {
+                try handler.func(context);
+                break;
+            }
+        }
     }
-    pub fn listen(self: *HTTPServer) !void {
+    pub fn listen(self: *Server) !void {
         var stream_server = StreamServer.init(.{});
         try stream_server.listen(self.address);
         print("Listening on: {}\n", .{self.address});
@@ -165,9 +170,14 @@ pub const HTTPServer = struct {
             const connection = try stream_server.accept();
             var conn = try self.allocator.create(Connection);
             conn.* = .{
-                .frame = async handler(self.allocator, connection.stream),
+                .frame = async self.run_handler(connection.stream),
             };
             try self.frames.append(conn);
         }
     }
+};
+
+const Handler = struct {
+    predicate: fn (Context) anyerror!bool,
+    func: fn (Context) anyerror!void,
 };
