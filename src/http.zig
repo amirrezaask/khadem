@@ -142,8 +142,8 @@ pub const HTTPServer = struct {
         self.stream_server.deinit();
     }
 
-    pub fn init(allocator: Allocator, config: Config) !*HTTPServer {
-        return &HTTPServer{
+    pub fn init(allocator: Allocator, config: Config) !HTTPServer {
+        return HTTPServer{
             .allocator = allocator,
             .config = config,
             .address = try Address.resolveIp(config.address, config.port),
@@ -159,8 +159,8 @@ pub const HTTPServer = struct {
     }
     pub fn listen(self: *HTTPServer) !void {
         var stream_server = StreamServer.init(.{});
-        print("{}\n", .{self.address});
         try stream_server.listen(self.address);
+        print("Listening on: {}\n", .{self.address});
         while (true) {
             const connection = try stream_server.accept();
             var conn = try self.allocator.create(Connection);
