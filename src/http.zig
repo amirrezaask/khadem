@@ -123,6 +123,15 @@ pub const Context = struct {
     }
 };
 
+pub fn predicate(ctx: Context) anyerror!bool {
+    _ = ctx;
+    unreachable;
+}
+pub fn func(ctx: Context) anyerror!void {
+    _ = ctx;
+    unreachable;
+}
+
 pub const Server = struct {
     config: Config,
     allocator: Allocator,
@@ -156,8 +165,9 @@ pub const Server = struct {
         var context = try Context.init(self.allocator, stream);
         context.debugPrintRequest();
         for (self.config.handlers) |handler| {
-            if (try handler.predicate(context)) {
-                try handler.func(context);
+            if (try handler.predicate(&context)) {
+                print("Found handler\n", .{});
+                try handler.func(&context);
                 break;
             }
         }
@@ -177,7 +187,23 @@ pub const Server = struct {
     }
 };
 
-const Handler = struct {
-    predicate: fn (Context) anyerror!bool,
-    func: fn (Context) anyerror!void,
+pub const Handler = struct {
+    user_predicate: fn (*Context) anyerror!bool,
+    user_func: fn (*Context) anyerror!void,
+
+    pub fn func(self: Handler, ctx: *Context) anyerror!void {
+        try self.user_func(ctx);
+    }
+    pub fn predicate(self: Handler, ctx: *Context) anyerror!bool {
+        return try self.user_predicate(ctx);
+    }
+    pub fn init(
+        user_predicate: fn (*Context) anyerror!bool,
+        user_func: fn (*Context) anyerror!void,
+    ) Handler {
+        return Handler{
+            .user_predicate = user_predicate,
+            .user_func = user_func,
+        };
+    }
 };
