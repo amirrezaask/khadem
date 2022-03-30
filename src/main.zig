@@ -14,10 +14,13 @@ pub fn main() anyerror!void {
     var gpa = GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    var server = Server(.{
-        .address = "127.0.0.1",
-        .port = 8080,
-    }, handler).init(allocator);
+    var server = Server(handler).init(
+        allocator,
+        .{
+            .address = "127.0.0.1",
+            .port = 8080,
+        },
+    );
 
     try server.listen();
 }

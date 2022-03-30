@@ -130,10 +130,11 @@ pub const Config = struct {
     port: u16 = 8080,
 };
 
-pub fn Server(comptime config: Config, comptime handler: Handler) type {
+pub fn Server(comptime handler: Handler) type {
     return struct {
         allocator: std.mem.Allocator,
         clients: std.ArrayList(*Client),
+        config: Config,
         const Self = @This();
         const Client = struct {
             frame: @Frame(handle),
@@ -142,8 +143,8 @@ pub fn Server(comptime config: Config, comptime handler: Handler) type {
             self.stream_server.close();
             self.stream_server.deinit();
         }
-        pub fn init(allocator: std.mem.Allocator) Self {
-            return .{ .allocator = allocator, .clients = std.ArrayList(*Client).init(allocator) };
+        pub fn init(allocator: std.mem.Allocator, config: Config) Self {
+            return .{ .allocator = allocator, .clients = std.ArrayList(*Client).init(allocator), .config = config };
         }
         fn handle(self: *Self, stream: net.Stream) !void {
             defer stream.close();
@@ -154,7 +155,7 @@ pub fn Server(comptime config: Config, comptime handler: Handler) type {
 
         pub fn listen(self: *Self) !void {
             var stream_server = StreamServer.init(.{});
-            const address = try net.Address.resolveIp(config.address, config.port);
+            const address = try net.Address.resolveIp(self.config.address, self.config.port);
             try stream_server.listen(address);
             print("Listening on: {}\n", .{address});
             while (true) {
