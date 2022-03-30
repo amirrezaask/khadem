@@ -123,15 +123,6 @@ pub const Context = struct {
     }
 };
 
-pub fn predicate(ctx: Context) anyerror!bool {
-    _ = ctx;
-    unreachable;
-}
-pub fn func(ctx: Context) anyerror!void {
-    _ = ctx;
-    unreachable;
-}
-
 pub const Handler = fn (*Context) anyerror!void;
 
 pub const Config = struct {
