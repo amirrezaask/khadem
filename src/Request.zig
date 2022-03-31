@@ -1,8 +1,6 @@
 const std = @import("std");
 const net = std.net;
 const http = @import("http.zig");
-const Method = http.Method;
-const Version = http.Version;
 const Request = @This();
 
 method: Method,
@@ -10,6 +8,46 @@ uri: []const u8,
 version: Version,
 headers: std.StringHashMap([]const u8),
 reader: net.Stream.Reader,
+
+pub const ParsingError = error{
+    MethodNotValid,
+    VersionNotValid,
+};
+
+pub const Method = enum {
+    GET,
+    POST,
+    PUT,
+    PATCH,
+    OPTION,
+    DELETE,
+    pub fn fromString(s: []const u8) !Method {
+        if (std.mem.eql(u8, "GET", s)) return .GET;
+        if (std.mem.eql(u8, "POST", s)) return .POST;
+        if (std.mem.eql(u8, "PUT", s)) return .PUT;
+        if (std.mem.eql(u8, "PATCH", s)) return .PATCH;
+        if (std.mem.eql(u8, "OPTION", s)) return .OPTION;
+        if (std.mem.eql(u8, "DELETE", s)) return .DELETE;
+        return ParsingError.MethodNotValid;
+    }
+};
+
+pub const Version = enum {
+    @"1.1",
+    @"2",
+
+    pub fn fromString(s: []const u8) !Version {
+        if (std.mem.eql(u8, "HTTP/1.1", s)) return .@"1.1";
+        if (std.mem.eql(u8, "HTTP/2", s)) return .@"2";
+        return ParsingError.VersionNotValid;
+    }
+
+    pub fn asString(self: Version) []const u8 {
+        if (self == Version.@"1.1") return "HTTP/1.1";
+        if (self == Version.@"2") return "HTTP/2";
+        unreachable;
+    }
+};
 
 pub fn debugPrintRequest(self: *Request) void {
     std.debug.print("method: {s}\nuri: {s}\nversion:{s}\n", .{ self.method, self.uri, self.version });
