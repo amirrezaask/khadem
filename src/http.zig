@@ -5,6 +5,8 @@ const Address = net.Address;
 const GeneralPurposeAllocator = std.heap.GeneralPurposeAllocator;
 const print = std.debug.print;
 const Allocator = std.mem.Allocator;
+const Request = @import("Request.zig");
+const Response = @import("Response.zig");
 
 pub const ParsingError = error{
     MethodNotValid,
@@ -46,84 +48,42 @@ pub const Version = enum {
     }
 };
 
-pub const Status = enum {
-    OK,
-    //TODO: add other HTTP status codes
-    pub fn asString(self: Status) []const u8 {
-        if (self == Status.OK) return "OK";
-    }
-    pub fn asNumber(self: Status) usize {
-        if (self == Status.OK) return 200;
-    }
-};
+pub const Status = struct {
+    message: []const u8,
+    code: usize,
 
-pub const Context = struct {
-    method: Method,
-    uri: []const u8,
-    version: Version,
-    headers: std.StringHashMap([]const u8),
-    stream: net.Stream,
-
-    pub fn bodyReader(self: *Context) net.Stream.Reader {
-        return self.stream.reader();
+    pub fn Ok() Status {
+        return Status{ .message = "OK", .code = 200 };
     }
 
-    pub fn response(self: *Context) net.Stream.Writer {
-        return self.stream.writer();
+    pub fn Created() Status {
+        return Status{ .message = "Created", .code = 201 };
     }
 
-    pub fn respond(self: *Context, status: Status, maybe_headers: ?std.StringHashMap([]const u8), body: []const u8) !void {
-        var writer = self.response();
-        try writer.print("{s} {} {s}\r\n", .{ self.version.asString(), status.asNumber(), status.asString() });
-        if (maybe_headers) |headers| {
-            var headers_iter = headers.iterator();
-            while (headers_iter.next()) |entry| {
-                try writer.print("{s}: {s}\n", .{ entry.key_ptr.*, entry.value_ptr.* });
-            }
-        }
-        try writer.print("\r\n", .{});
-
-        _ = try writer.write(body);
+    pub fn Accepted() Status {
+        return Status{ .message = "Accepted", .code = 202 };
     }
 
-    pub fn debugPrintRequest(self: *Context) void {
-        print("method: {s}\nuri: {s}\nversion:{s}\n", .{ self.method, self.uri, self.version });
-        var headers_iter = self.headers.iterator();
-        while (headers_iter.next()) |entry| {
-            print("{s}: {s}\n", .{ entry.key_ptr.*, entry.value_ptr.* });
-        }
+    pub fn NoContent() Status {
+        return Status{ .message = "NoContent", .code = 204 };
     }
-    pub fn init(allocator: std.mem.Allocator, stream: net.Stream) !Context {
-        var first_line = try stream.reader().readUntilDelimiterAlloc(allocator, '\n', std.math.maxInt(usize));
-        first_line = first_line[0 .. first_line.len - 1];
-        var first_line_iter = std.mem.split(u8, first_line, " ");
 
-        const method = first_line_iter.next().?;
-        const uri = first_line_iter.next().?;
-        const version = first_line_iter.next().?;
-        var headers = std.StringHashMap([]const u8).init(allocator);
+    pub fn NotFound() Status {
+        return Status{ .message = "Not Found", .code = 404 };
+    }
 
-        while (true) {
-            var line = try stream.reader().readUntilDelimiterAlloc(allocator, '\n', std.math.maxInt(usize));
-            if (line.len == 1 and std.mem.eql(u8, line, "\r")) break;
-            line = line[0..line.len];
-            var line_iter = std.mem.split(u8, line, ":");
-            const key = line_iter.next().?;
-            var value = line_iter.next().?;
-            if (value[0] == ' ') value = value[1..];
-            try headers.put(key, value);
-        }
-        return Context{
-            .headers = headers,
-            .method = try Method.fromString(method),
-            .version = try Version.fromString(version),
-            .uri = uri,
-            .stream = stream,
-        };
+    pub fn BadRequest() Status {
+        return Status{ .message = "Bad Request", .code = 400 };
+    }
+    pub fn Forbidden() Status {
+        return Status{ .message = "Forbidden", .code = 403 };
+    }
+    pub fn UnAuthorized() Status {
+        return Status{ .message = "UnAuthorized", .code = 401 };
     }
 };
 
-pub const Handler = fn (*Context) anyerror!void;
+pub const Handler = fn (*Request, *Response) anyerror!void;
 
 pub const Config = struct {
     address: []const u8 = "127.0.0.1",
@@ -148,9 +108,10 @@ pub fn Server(comptime handler: Handler) type {
         }
         fn handle(self: *Self, stream: net.Stream) !void {
             defer stream.close();
-            var context = try Context.init(self.allocator, stream);
-            context.debugPrintRequest();
-            try handler(&context);
+            var request = try Request.init(self.allocator, stream.reader());
+            request.debugPrintRequest();
+            var response = Response{ .version = request.version, .writer = stream.writer() };
+            try handler(&request, &response);
         }
 
         pub fn listen(self: *Self) !void {
