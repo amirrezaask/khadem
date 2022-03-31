@@ -8,4 +8,5 @@ const Allocator = std.mem.Allocator;
 
 pub const Request = @import("Request.zig");
 pub const Response = @import("Response.zig");
-pub const Server = @import("server.zig").Server;
+pub const server = @import("server.zig");
+pub const Server = server.Server;

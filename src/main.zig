@@ -6,6 +6,9 @@ const http = @import("http.zig");
 const Request = http.Request;
 const Response = http.Response;
 const Server = http.Server;
+const routes = @import("routes.zig");
+const RouteHandler = routes.RouteHandler;
+const makeRouter = routes.makeRouter;
 
 pub const io_mode = .evented;
 
@@ -16,6 +19,11 @@ pub const io_mode = .evented;
 pub fn main() anyerror!void {
     var gpa = GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
+    const routes_handlers = [_]RouteHandler{
+        RouteHandler{ .handler = indexHandler, .route = "/" },
+        RouteHandler{ .handler = aboutHandler, .route = "/about" },
+    };
+    var handler = makeRouter(&routes_handlers).handler;
 
     var server = Server(handler).init(
         allocator,
@@ -27,8 +35,9 @@ pub fn main() anyerror!void {
 
     try server.listen();
 }
-
-fn handler(req: *Request, resp: *Response) anyerror!void {
-    if (std.mem.eql(u8, req.uri, "/sleep")) std.time.sleep(std.time.ns_per_s * 5);
-    try resp.respond(Response.Status.Ok(), null, "some");
+fn aboutHandler(_: *Request, resp: *Response) anyerror!void {
+    try resp.respond(Response.Status.Ok(), null, "about");
+}
+fn indexHandler(_: *Request, resp: *Response) anyerror!void {
+    try resp.respond(Response.Status.Ok(), null, "index");
 }

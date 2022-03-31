@@ -5,8 +5,9 @@ const Address = net.Address;
 const GeneralPurposeAllocator = std.heap.GeneralPurposeAllocator;
 const print = std.debug.print;
 const Allocator = std.mem.Allocator;
-const Request = @import("Request.zig");
-const Response = @import("Response.zig");
+const http = @import("http.zig");
+const Request = http.Request;
+const Response = http.Response;
 
 pub const Handler = fn (*Request, *Response) anyerror!void;
 
