@@ -7,6 +7,8 @@ method: Method,
 uri: []const u8,
 version: Version,
 headers: std.StringHashMap([]const u8),
+query_params: ?std.StringHashMap([]const u8),
+// path_params: std.StringHashMap([]const u8),
 reader: net.Stream.Reader,
 
 pub const ParsingError = error{
@@ -52,6 +54,14 @@ pub const Version = enum {
 pub fn debugPrintRequest(self: *Request) void {
     std.debug.print("method: {s}\nuri: {s}\nversion:{s}\n", .{ self.method, self.uri, self.version });
     var headers_iter = self.headers.iterator();
+    if (self.query_params) |_| {
+        var query_params_iter = self.query_params.?.iterator();
+        std.debug.print("query params:\n", .{});
+        while (query_params_iter.next()) |entry| {
+            std.debug.print("{s}: {s}\n", .{ entry.key_ptr.*, entry.value_ptr.* });
+        }
+    }
+    std.debug.print("headers:\n", .{});
     while (headers_iter.next()) |entry| {
         std.debug.print("{s}: {s}\n", .{ entry.key_ptr.*, entry.value_ptr.* });
     }
@@ -63,7 +73,27 @@ pub fn init(allocator: std.mem.Allocator, reader: net.Stream.Reader) !Request {
     var first_line_iter = std.mem.split(u8, first_line, " ");
 
     const method = first_line_iter.next().?;
-    const uri = first_line_iter.next().?;
+
+    // Seperating uri from query params part and parsing query params into a hashmap
+    var uri = first_line_iter.next().?;
+
+    var start_of_query_params = std.mem.indexOf(u8, uri, "?");
+    var query_params: ?std.StringHashMap([]const u8) = null;
+    if (start_of_query_params) |_| {
+        start_of_query_params = start_of_query_params.? + 1;
+        query_params = std.StringHashMap([]const u8).init(allocator);
+        const query_params_str = uri[start_of_query_params.?..];
+        uri = uri[0 .. start_of_query_params.? - 1];
+        var query_params_iter = std.mem.split(u8, query_params_str, "&");
+        query_params = std.StringHashMap([]const u8).init(allocator);
+        while (query_params_iter.next()) |query_param| {
+            var query_param_iter = std.mem.split(u8, query_param, "=");
+            const key = query_param_iter.next().?;
+            const value = query_param_iter.next().?;
+            try query_params.?.put(key, value);
+        }
+    }
+
     const version = first_line_iter.next().?;
     var headers = std.StringHashMap([]const u8).init(allocator);
 
@@ -81,6 +111,7 @@ pub fn init(allocator: std.mem.Allocator, reader: net.Stream.Reader) !Request {
         .headers = headers,
         .method = try Method.fromString(method),
         .version = try Version.fromString(version),
+        .query_params = query_params,
         .uri = uri,
         .reader = reader,
     };
