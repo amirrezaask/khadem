@@ -6,15 +6,15 @@ pub const RouteHandler = struct {
     route: []const u8,
 };
 
-pub fn makeRouter(comptime route_handlers: []RouteHandler) type {
+pub fn Router(comptime route_handlers: []const RouteHandler) type {
     return struct {
         pub fn handler(req: *http.Request, resp: *http.Response) anyerror!void {
-            for (route_handlers) |route_handler| {
+            inline for (route_handlers) |route_handler| {
                 if (std.mem.eql(u8, route_handler.route, req.uri)) {
                     return route_handler.handler(req, resp);
                 }
             }
-            resp.respond(http.Response.Status.NotFound(), null, "Not FOUND");
+            try resp.respond(http.Response.Status.NotFound(), null, "Not FOUND");
         }
     };
 }

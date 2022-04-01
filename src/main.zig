@@ -8,7 +8,7 @@ const Response = http.Response;
 const Server = http.Server;
 const routes = @import("routes.zig");
 const RouteHandler = routes.RouteHandler;
-const makeRouter = routes.makeRouter;
+const Router = routes.Router;
 
 pub const io_mode = .evented;
 
@@ -23,7 +23,7 @@ pub fn main() anyerror!void {
         RouteHandler{ .handler = indexHandler, .route = "/" },
         RouteHandler{ .handler = aboutHandler, .route = "/about" },
     };
-    var handler = makeRouter(&routes_handlers).handler;
+    const handler = Router(&routes_handlers).handler;
 
     var server = Server(handler).init(
         allocator,
