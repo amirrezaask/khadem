@@ -2,6 +2,7 @@ const std = @import("std");
 const GeneralPurposeAllocator = std.heap.GeneralPurposeAllocator;
 const print = std.debug.print;
 
+// const regex = @import("regex");
 const http = @import("http.zig");
 const Request = http.Request;
 const Response = http.Response;
@@ -19,11 +20,7 @@ pub const io_mode = .evented;
 pub fn main() anyerror!void {
     var gpa = GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
-    const routes_handlers = [_]RouteHandler{
-        RouteHandler{ .handler = indexHandler, .route = "/" },
-        RouteHandler{ .handler = aboutHandler, .route = "/about" },
-    };
-    const handler = Router(&routes_handlers).handler;
+    const handler = Router(&.{RouteHandler{ .handler = indexHandler, .route = "/:name" }}).handler;
 
     var server = Server(handler).init(
         allocator,
@@ -41,3 +38,11 @@ fn aboutHandler(_: *Request, resp: *Response) anyerror!void {
 fn indexHandler(_: *Request, resp: *Response) anyerror!void {
     try resp.respond(Response.Status.Ok(), null, "index");
 }
+
+// test "regex test" {
+//     _ = @import("cli");
+//     const input = "/amirreza";
+//     const re = regex.compile("\\/(?<name>.*)\\/?");
+//     const captures = regex.captures(re, input);
+//     std.testing.expect(captures == null);
+// }

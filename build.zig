@@ -12,6 +12,8 @@ pub fn build(b: *std.build.Builder) void {
     const mode = b.standardReleaseOptions();
 
     const exe = b.addExecutable("khadem", "src/main.zig");
+    // exe.addPackagePath("regex", "./libs/zig-regex/src/regex.zig");
+    // exe.addPackagePath("cli", "./libs/cli/src/main.zig");
     exe.setTarget(target);
     exe.setBuildMode(mode);
     exe.install();
