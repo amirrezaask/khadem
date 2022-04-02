@@ -11,12 +11,26 @@ const Response = http.Response;
 
 pub const HandlerFn = fn (*Request, *Response) anyerror!void;
 
+fn defaultHandler(_: *Request, _: *Response) anyerror!void {
+    std.debug.print("default handler\n", .{});
+    return;
+}
+pub const Handler = struct {
+    handler_fn: HandlerFn = defaultHandler,
+    pub fn init(comptime handler_fn: HandlerFn) Handler {
+        return .{ .handler_fn = handler_fn };
+    }
+    // pub fn handler(self: Handler, req: *Request, resp: *Response) anyerror!void {
+    //     return self.handler_fn(req, resp);
+    // }
+};
+
 pub const Config = struct {
     address: []const u8 = "127.0.0.1",
     port: u16 = 8080,
 };
 
-pub fn Server(comptime handler: HandlerFn) type {
+pub fn Server(comptime handler: Handler) type {
     return struct {
         allocator: std.mem.Allocator,
         clients: std.ArrayList(*Client),
@@ -36,7 +50,7 @@ pub fn Server(comptime handler: HandlerFn) type {
             defer stream.close();
             var request = try Request.init(self.allocator, stream.reader());
             var response = Response{ .version = request.version, .writer = stream.writer() };
-            try handler(&request, &response);
+            try handler.handler_fn(&request, &response);
         }
 
         pub fn listen(self: *Self) !void {
