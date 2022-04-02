@@ -9,20 +9,12 @@ const http = @import("http.zig");
 const Request = http.Request;
 const Response = http.Response;
 
-pub const HandlerFn = fn (*Request, *Response) anyerror!void;
-
-fn defaultHandler(_: *Request, _: *Response) anyerror!void {
-    std.debug.print("default handler\n", .{});
-    return;
-}
 pub const Handler = struct {
-    handler_fn: HandlerFn = defaultHandler,
-    pub fn init(comptime handler_fn: HandlerFn) Handler {
+    pub const Fn = fn (*Request, *Response) anyerror!void;
+    handler_fn: Fn,
+    pub fn init(comptime handler_fn: Fn) Handler {
         return .{ .handler_fn = handler_fn };
     }
-    // pub fn handler(self: Handler, req: *Request, resp: *Response) anyerror!void {
-    //     return self.handler_fn(req, resp);
-    // }
 };
 
 pub const Config = struct {
