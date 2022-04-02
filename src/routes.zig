@@ -1,10 +1,11 @@
 const std = @import("std");
 const http = @import("http.zig");
 const Handler = http.server.Handler;
+const HandlerFn = Handler.Fn;
 const middleware = @import("middlewares.zig");
 
 pub const RouteHandler = struct {
-    handler: http.server.HandlerFn,
+    handler: HandlerFn,
     route: []const u8,
     // middlewares: []const middleware.Middleware,
 };
