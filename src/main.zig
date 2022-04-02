@@ -22,7 +22,7 @@ pub const io_mode = .evented;
 pub fn main() anyerror!void {
     var gpa = GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
-    const handler = Router(&.{RouteHandler{ .handler = LogRequest(indexHandler).handler, .route = "/" }}).handler;
+    const handler = Router(&.{RouteHandler{ .handler = indexHandler, .route = "/", .middlewares = &.{LogRequest} }}).handler;
 
     var server = Server(handler).init(
         allocator,
