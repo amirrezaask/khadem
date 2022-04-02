@@ -25,7 +25,7 @@ pub fn main() anyerror!void {
     var gpa = GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    const handler = comptime Router(&.{ RouteHandlerFn("/", indexHandler), RouteHandler("/about", Handler.init(aboutHandler)) });
+    const handler = comptime Router(&.{ RouteHandlerFn("/", LogRequest(indexHandler)), RouteHandler("/about", Handler.init(aboutHandler)) });
 
     var server = Server(handler).init(
         allocator,
