@@ -8,7 +8,9 @@ const Request = http.Request;
 const Response = http.Response;
 const Server = http.Server;
 const routes = @import("routes.zig");
+const Handler = http.server.Handler;
 const RouteHandler = routes.RouteHandler;
+const RouteHandlerFn = routes.RouteHandlerFn;
 const Router = routes.Router;
 const middlewares = @import("middlewares.zig");
 const LogRequest = middlewares.LogRequest;
@@ -22,10 +24,8 @@ pub const io_mode = .evented;
 pub fn main() anyerror!void {
     var gpa = GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
-    const handler = comptime Router(&.{.{
-        .handler = indexHandler,
-        .route = "/",
-    }});
+
+    const handler = comptime Router(&.{ RouteHandlerFn("/", indexHandler), RouteHandler("/about", Handler.init(aboutHandler)) });
 
     var server = Server(handler).init(
         allocator,
