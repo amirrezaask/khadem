@@ -10,6 +10,8 @@ const Server = http.Server;
 const routes = @import("routes.zig");
 const RouteHandler = routes.RouteHandler;
 const Router = routes.Router;
+const middlewares = @import("middlewares.zig");
+const LogRequest = middlewares.LogRequest;
 
 pub const io_mode = .evented;
 
@@ -20,7 +22,7 @@ pub const io_mode = .evented;
 pub fn main() anyerror!void {
     var gpa = GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
-    const handler = Router(&.{RouteHandler{ .handler = indexHandler, .route = "/:name" }}).handler;
+    const handler = Router(&.{RouteHandler{ .handler = LogRequest(indexHandler).handler, .route = "/" }}).handler;
 
     var server = Server(handler).init(
         allocator,

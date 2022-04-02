@@ -2,7 +2,7 @@ const std = @import("std");
 const http = @import("http.zig");
 
 pub const RouteHandler = struct {
-    handler: http.server.Handler,
+    handler: http.server.HandlerFn,
     route: []const u8,
 };
 

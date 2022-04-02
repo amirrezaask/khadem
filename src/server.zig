@@ -9,14 +9,14 @@ const http = @import("http.zig");
 const Request = http.Request;
 const Response = http.Response;
 
-pub const Handler = fn (*Request, *Response) anyerror!void;
+pub const HandlerFn = fn (*Request, *Response) anyerror!void;
 
 pub const Config = struct {
     address: []const u8 = "127.0.0.1",
     port: u16 = 8080,
 };
 
-pub fn Server(comptime handler: Handler) type {
+pub fn Server(comptime handler: HandlerFn) type {
     return struct {
         allocator: std.mem.Allocator,
         clients: std.ArrayList(*Client),
@@ -35,7 +35,6 @@ pub fn Server(comptime handler: Handler) type {
         fn handle(self: *Self, stream: net.Stream) !void {
             defer stream.close();
             var request = try Request.init(self.allocator, stream.reader());
-            request.debugPrintRequest();
             var response = Response{ .version = request.version, .writer = stream.writer() };
             try handler(&request, &response);
         }
