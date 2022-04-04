@@ -17,10 +17,6 @@ const LogRequest = middlewares.LogRequest;
 
 pub const io_mode = .evented;
 
-/// Async Webserver : TCP Listener + HTTP protocol + handlers
-/// Two ways of using it:
-/// 1. Library => create a webserver with config
-/// 2. Executable => gets a config file in YAML
 pub fn main() anyerror!void {
     var gpa = GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
@@ -43,11 +39,3 @@ fn greetHandler(req: *Request, resp: *Response) anyerror!void {
 fn indexHandler(_: *Request, resp: *Response) anyerror!void {
     try resp.respond(Response.Status.Ok(), null, "index");
 }
-
-// test "regex test" {
-//     _ = @import("cli");
-//     const input = "/amirreza";
-//     const re = regex.compile("\\/(?<name>.*)\\/?");
-//     const captures = regex.captures(re, input);
-//     std.testing.expect(captures == null);
-// }
