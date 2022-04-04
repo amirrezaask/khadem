@@ -24,17 +24,26 @@ pub fn RouteHandler(comptime path: []const u8, comptime handler: Handler) RouteH
 }
 
 pub fn Router(comptime route_handlers: []const RouteHandlerTuple) Handler {
+    comptime var radix = Radix{};
+    inline for (route_handlers) |route_handler, idx| {
+        radix.insert(route_handler.route, idx);
+    }
+
     const dumb = struct {
         pub fn handler(req: *http.Request, resp: *http.Response) anyerror!void {
-            inline for (route_handlers) |route_handler| {
-                if (std.mem.eql(u8, route_handler.route, req.uri)) {
-                    return route_handler.handler.handler_fn(req, resp);
+            if (radix.lookup(req.uri)) |route| {
+                inline for (route_handlers) |rh, idx| {
+                    if (idx == route.route_idx) {
+                        if (route.parameters) |params| {
+                            req.path_params = &params;
+                        }
+                        return rh.handler.handler_fn(req, resp);
+                    }
                 }
             }
-            try resp.respond(http.Response.Status.NotFound(), null, "Not FOUND");
+            return resp.respond(http.Response.Status.NotFound(), null, "Not Found");
         }
     };
-
     return Handler.init(comptime dumb.handler);
 }
 
@@ -42,12 +51,13 @@ pub const KV = struct {
     name: []const u8,
     value: []const u8,
 };
+
 const Radix = struct {
     const max_parameters_allowd = 10;
     const Node = struct {
         children: []*Node,
         path: []const u8,
-        route_idx: ?usize,
+        route_idx: usize,
         match_strategy: enum { parameter, exact },
     };
 
@@ -59,7 +69,7 @@ const Radix = struct {
     },
 
     // this function should be completely comptime evaluable;
-    pub fn insert(self: *Radix, comptime path: []const u8, route_idx: usize) !void {
+    pub fn insert(self: *Radix, comptime path: []const u8, route_idx: usize) void {
         if (path.len == 1 and path[0] == '/') {
             self.root.route_idx = route_idx;
         }
@@ -80,7 +90,7 @@ const Radix = struct {
                 var new_node: Node = Node{
                     .children = &[_]*Node{},
                     .path = segment,
-                    .route_idx = null,
+                    .route_idx = undefined,
                     .match_strategy = .exact,
                 };
                 // check if the path segment is a parameter or not
@@ -102,9 +112,9 @@ const Radix = struct {
     }
     const Result = struct {
         parameters: ?[max_parameters_allowd]KV,
-        route_idx: ?usize,
+        route_idx: usize,
     };
-    pub fn lookup(self: *Radix, path: []const u8) !Result {
+    pub fn lookup(self: *Radix, path: []const u8) ?Result {
         var path_iter = std.mem.split(u8, path[1..], "/");
         var current = &self.root;
         var parameters_count: usize = 0;
@@ -127,28 +137,19 @@ const Radix = struct {
                 }
             }
 
-            return Result{
-                .route_idx = null,
-                .parameters = null,
-            };
+            return null;
         }
         if (!(path.len == 1 and (std.mem.eql(u8, path, "/")))) {
             if (route_idx == null) {
-                return Result{
-                    .route_idx = null,
-                    .parameters = null,
-                };
+                return null;
             }
             if (route_idx.? == self.root.route_idx)
-                return Result{
-                    .route_idx = null,
-                    .parameters = null,
-                };
+                return null;
         }
 
         return Result{
             .parameters = parameters,
-            .route_idx = route_idx,
+            .route_idx = route_idx.?,
         };
     }
 };
@@ -158,51 +159,51 @@ const print = std.debug.print;
 // Testcases are taken from apple_pie
 test "Insert and retrieve" {
     comptime var trie = Radix{};
-    comptime try trie.insert("/posts/:id", 1);
-    comptime try trie.insert("/topics/:id/messages/:msg", 2);
-    comptime try trie.insert("/bar", 3);
+    comptime trie.insert("/posts/:id", 1);
+    comptime trie.insert("/topics/:id/messages/:msg", 2);
+    comptime trie.insert("/bar", 3);
 
-    const res = try trie.lookup("/posts/5");
-    const res2 = try trie.lookup("/topics/25/messages/20");
-    const res3 = try trie.lookup("/bar");
+    const res = trie.lookup("/posts/5");
+    const res2 = trie.lookup("/topics/25/messages/20");
+    const res3 = trie.lookup("/bar");
 
-    try std.testing.expectEqual(@as(usize, 1), res.route_idx.?);
-    try std.testing.expectEqual(@as(usize, 2), res2.route_idx.?);
-    try std.testing.expectEqual(@as(usize, 3), res3.route_idx.?);
+    try std.testing.expectEqual(@as(usize, 1), res.?.route_idx);
+    try std.testing.expectEqual(@as(usize, 2), res2.?.route_idx);
+    try std.testing.expectEqual(@as(usize, 3), res3.?.route_idx);
 
-    try std.testing.expectEqualStrings("5", res.parameters.?[0].value);
-    try std.testing.expectEqualStrings("25", res2.parameters.?[0].value);
-    try std.testing.expectEqualStrings("20", res2.parameters.?[1].value);
+    try std.testing.expectEqualStrings("5", res.?.parameters.?[0].value);
+    try std.testing.expectEqualStrings("25", res2.?.parameters.?[0].value);
+    try std.testing.expectEqualStrings("20", res2.?.parameters.?[1].value);
 }
 
 test "Insert and retrieve paths with same prefix" {
     comptime var trie = Radix{};
-    comptime try trie.insert("/api", 1);
-    comptime try trie.insert("/api/users", 2);
-    comptime try trie.insert("/api/events", 3);
-    comptime try trie.insert("/api/events/:id", 4);
+    comptime trie.insert("/api", 1);
+    comptime trie.insert("/api/users", 2);
+    comptime trie.insert("/api/events", 3);
+    comptime trie.insert("/api/events/:id", 4);
 
-    const res = try trie.lookup("/api");
-    const res2 = try trie.lookup("/api/users");
-    const res3 = try trie.lookup("/api/events");
-    const res4 = try trie.lookup("/api/events/1337");
-    const res5 = try trie.lookup("/foo");
-    const res6 = try trie.lookup("/api/api/events");
+    const res = trie.lookup("/api");
+    const res2 = trie.lookup("/api/users");
+    const res3 = trie.lookup("/api/events");
+    const res4 = trie.lookup("/api/events/1337");
+    const res5 = trie.lookup("/foo");
+    const res6 = trie.lookup("/api/api/events");
 
-    try std.testing.expectEqual(@as(usize, 1), res.route_idx.?);
-    try std.testing.expectEqual(@as(usize, 2), res2.route_idx.?);
-    try std.testing.expectEqual(@as(usize, 3), res3.route_idx.?);
-    try std.testing.expectEqual(@as(usize, 4), res4.route_idx.?);
-    try std.testing.expect(res5.route_idx == null);
-    try std.testing.expect(res6.route_idx == null);
+    try std.testing.expectEqual(@as(usize, 1), res.?.route_idx);
+    try std.testing.expectEqual(@as(usize, 2), res2.?.route_idx);
+    try std.testing.expectEqual(@as(usize, 3), res3.?.route_idx);
+    try std.testing.expectEqual(@as(usize, 4), res4.?.route_idx);
+    try std.testing.expect(res5 == null);
+    try std.testing.expect(res6 == null);
 
-    try std.testing.expectEqualStrings("1337", res4.parameters.?[0].value);
+    try std.testing.expectEqualStrings("1337", res4.?.parameters.?[0].value);
 }
 
 test "lookup root" {
     comptime var trie = Radix{};
-    comptime try trie.insert("/api", 1);
+    comptime trie.insert("/api", 1);
 
-    const res = try trie.lookup("/");
-    try std.testing.expect(res.route_idx == null);
+    const res = trie.lookup("/");
+    try std.testing.expect(res == null);
 }
