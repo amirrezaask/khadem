@@ -126,6 +126,11 @@ const Radix = struct {
                     continue :loop;
                 }
             }
+
+            return Result{
+                .route_idx = null,
+                .parameters = null,
+            };
         }
         if (!(path.len == 1 and (std.mem.eql(u8, path, "/")))) {
             if (route_idx == null) {
@@ -194,10 +199,10 @@ test "Insert and retrieve paths with same prefix" {
     try std.testing.expectEqualStrings("1337", res4.parameters.?[0].value);
 }
 
-// test "lookup root" {
-//     comptime var trie = Radix{};
-//     comptime try trie.insert("/api", 1);
+test "lookup root" {
+    comptime var trie = Radix{};
+    comptime try trie.insert("/api", 1);
 
-//     const res = try trie.lookup("/");
-//     try std.testing.expect(res.route_idx == null);
-// }
+    const res = try trie.lookup("/");
+    try std.testing.expect(res.route_idx == null);
+}
