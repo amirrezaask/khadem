@@ -11,4 +11,4 @@ is a webserver i write in live coding sessions recorded in my youtube.
 5. [refactoring and starting the router](https://youtu.be/TQkjrJ_hlKM)
 6. [adding query parameters support](https://youtu.be/4iBNrTZ6-FY)
 7. [failure at adding regex to the router :) but success at adding middleware](https://youtu.be/FymX_XfIgts)
-8. [Improvements I made to public interfaces] (https://youtu.be/7S9ySq5cDZM)
+8. [Improvements I made to public interfaces](https://youtu.be/7S9ySq5cDZM)
