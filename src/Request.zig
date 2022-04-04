@@ -2,13 +2,14 @@ const std = @import("std");
 const net = std.net;
 const http = @import("http.zig");
 const Request = @This();
+const KV = @import("routes.zig").KV;
 
 method: Method,
 uri: []const u8,
 version: Version,
 headers: std.StringHashMap([]const u8),
 query_params: ?std.StringHashMap([]const u8),
-// path_params: std.StringHashMap([]const u8),
+path_params: ?[]const KV,
 reader: net.Stream.Reader,
 
 pub const ParsingError = error{
@@ -112,6 +113,7 @@ pub fn init(allocator: std.mem.Allocator, reader: net.Stream.Reader) !Request {
         .method = try Method.fromString(method),
         .version = try Version.fromString(version),
         .query_params = query_params,
+        .path_params = null,
         .uri = uri,
         .reader = reader,
     };

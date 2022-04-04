@@ -25,7 +25,7 @@ pub fn main() anyerror!void {
     var gpa = GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    const handler = comptime Router(&.{ RouteHandlerFn("/", LogRequest(indexHandler)), RouteHandler("/about", Handler.init(aboutHandler)) });
+    const handler = comptime Router(&.{ RouteHandlerFn("/", LogRequest(indexHandler)), RouteHandler("/greet/:name", Handler.init(greetHandler)) });
 
     var server = Server(handler).init(
         allocator,
@@ -37,8 +37,8 @@ pub fn main() anyerror!void {
 
     try server.listen();
 }
-fn aboutHandler(_: *Request, resp: *Response) anyerror!void {
-    try resp.respond(Response.Status.Ok(), null, "about");
+fn greetHandler(req: *Request, resp: *Response) anyerror!void {
+    try resp.respond(Response.Status.Ok(), null, req.path_params.?[0].value);
 }
 fn indexHandler(_: *Request, resp: *Response) anyerror!void {
     try resp.respond(Response.Status.Ok(), null, "index");
