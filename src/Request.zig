@@ -131,3 +131,7 @@ pub fn getParam(self: *Request, name: []const u8) ?[]const u8 {
 
     return null;
 }
+
+pub fn getQueryParam(self: *Request, name: []const u8) ?[]const u8 {
+    return self.query_params.?.get(name).?;
+}
