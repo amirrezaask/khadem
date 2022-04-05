@@ -2,18 +2,15 @@ const std = @import("std");
 const GeneralPurposeAllocator = std.heap.GeneralPurposeAllocator;
 const print = std.debug.print;
 
-// const regex = @import("regex");
-const http = @import("http.zig");
-const Request = http.Request;
-const Response = http.Response;
-const Server = http.Server;
-const routes = @import("routes.zig");
-const Handler = http.server.Handler;
-const RouteHandler = routes.RouteHandler;
-const RouteHandlerFn = routes.RouteHandlerFn;
-const Router = routes.Router;
-const middlewares = @import("middlewares.zig");
-const LogRequest = middlewares.LogRequest;
+const khadem = @import("khadem");
+const Request = khadem.Request;
+const Response = khadem.Response;
+const Server = khadem.Server;
+const Handler = khadem.server.Handler;
+const RouteHandler = khadem.routes.RouteHandler;
+const RouteHandlerFn = khadem.routes.RouteHandlerFn;
+const Router = khadem.routes.Router;
+const LogRequest = khadem.middlewares.LogRequest;
 
 pub const io_mode = .evented;
 

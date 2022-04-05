@@ -11,9 +11,11 @@ pub fn build(b: *std.build.Builder) void {
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall.
     const mode = b.standardReleaseOptions();
 
-    const exe = b.addExecutable("khadem", "src/http.zig");
-    // exe.addPackagePath("regex", "./libs/zig-regex/src/regex.zig");
-    // exe.addPackagePath("cli", "./libs/cli/src/main.zig");
+    const exe = b.addExecutable("examples", "src/main.zig");
+    exe.addPackage(.{
+        .name = "khadem",
+        .path = .{ .path = "../src/http.zig" },
+    });
     exe.setTarget(target);
     exe.setBuildMode(mode);
     exe.install();

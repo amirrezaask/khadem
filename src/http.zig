@@ -10,3 +10,9 @@ pub const Request = @import("Request.zig");
 pub const Response = @import("Response.zig");
 pub const server = @import("server.zig");
 pub const Server = server.Server;
+pub const routes = @import("routes.zig");
+pub const middlewares = @import("middlewares.zig");
+
+pub fn main() anyerror!void {
+    std.debug.print("khadem web server.", .{});
+}
