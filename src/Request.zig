@@ -118,3 +118,16 @@ pub fn init(allocator: std.mem.Allocator, reader: net.Stream.Reader) !Request {
         .reader = reader,
     };
 }
+
+pub fn getParam(self: *Request, name: []const u8) ?[]const u8 {
+    const eql = std.mem.eql;
+    if (self.path_params) |kvs| {
+        for (kvs) |kv| {
+            if (eql(u8, kv.name, name)) {
+                return kv.value;
+            }
+        }
+    }
+
+    return null;
+}

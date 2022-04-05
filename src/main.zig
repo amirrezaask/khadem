@@ -34,7 +34,7 @@ pub fn main() anyerror!void {
     try server.listen();
 }
 fn greetHandler(req: *Request, resp: *Response) anyerror!void {
-    try resp.respond(Response.Status.Ok(), null, req.path_params.?[0].value);
+    try resp.respond(Response.Status.Ok(), null, req.getParam("name").?);
 }
 fn indexHandler(_: *Request, resp: *Response) anyerror!void {
     try resp.respond(Response.Status.Ok(), null, "index");
