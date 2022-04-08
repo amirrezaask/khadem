@@ -128,9 +128,9 @@ impl Request {
             method: first_line_iter.next().unwrap().into(),
             uri: uri.to_string(),
             version: first_line_iter.next().unwrap().into(),
-            headers: headers,
-            query_params: query_params,
-            reader: reader,
+            headers,
+            query_params,
+            reader,
             path_params: HashMap::new(),
         })
     }
