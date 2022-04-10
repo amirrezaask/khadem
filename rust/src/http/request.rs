@@ -1,5 +1,5 @@
-use std::collections::HashMap;
-use tokio::io::AsyncReadExt;
+use std::{collections::HashMap, ops::Index};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 pub type RequestParseResult = Result<Request, Error>;
 
@@ -46,6 +46,14 @@ pub enum Version {
     HTTP1_1,
 }
 
+impl std::fmt::Display for Version {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Version::HTTP1_1 => f.write_str("HTTP/1.1")
+        }
+    }
+}
+
 impl From<&str> for Version {
     fn from(s: &str) -> Self {
         if s == "HTTP/1.1" {
@@ -89,7 +97,13 @@ impl Request {
                         None => return Err(Error::ParsingError),
                     };
                     let value = match iter.next() {
-                        Some(k) => k,
+                        Some(v) => {
+                           if v.chars().nth(0) == Some(' ') {
+                               String::from(v)[1..].to_string()
+                           }  else {
+                                v.to_string()
+                           }
+                        },
                         None => return Err(Error::ParsingError),
                     };
                     headers.insert(key.to_string(), value.to_string());
@@ -139,6 +153,24 @@ pub struct Connection {
     pub socket: tokio::net::TcpStream,
 }
 
+pub struct StatusCode {
+    pub code: usize,
+    pub msg: &'static str,
+}
+
+impl StatusCode {
+    pub fn ok() -> Self {
+        StatusCode { code: 200, msg: "OK" }
+    }
+}
+
+
+pub struct Response<'a> {
+    pub status: StatusCode,
+    pub headers: HashMap<String, String>,
+    pub body: &'a str,
+}
+
 impl Connection {
     pub async fn new(mut socket: tokio::net::TcpStream) -> Result<Connection, Error> {
         let request = Request::new(&mut socket).await?;
@@ -147,8 +179,19 @@ impl Connection {
         })
     }
 
-    pub async fn respond(&self, status: usize, body: &str ) -> Result<(), Error> {
+    pub async fn respond<'a>(&mut self, resp: Response<'a>) -> Result<(), std::io::Error> {
+        self.socket.write_all(format!("{} {} {}\r\n", self.request.version, resp.status.code, resp.status.msg).as_bytes()).await?;
+        print!("{} {} {}\r\n", self.request.version, resp.status.code, resp.status.msg);
+        for (k,v) in resp.headers.iter() {
+            self.socket.write_all(format!("{}: {}\r\n", k, v).as_bytes()).await?;
+            print!("{}: {}\r\n", k, v);
+        }
+
+        print!("\r\n");
+        self.socket.write_all(b"\r\n").await?;
+        if resp.body.len() != 0 {
+            self.socket.write_all(resp.body.as_bytes()).await?;
+        }
         Ok(())
-        // self.socket.write_all(body)
     }
 }

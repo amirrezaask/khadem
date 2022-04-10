@@ -6,9 +6,15 @@ mod http;
 use http::*;
 
 async fn handle(socket: tokio::net::TcpStream) -> Result<(), Error> {
-    let connection = Connection::new(socket).await?;
+    let mut connection = Connection::new(socket).await?;
     println!("method: {:?}\nuri:{:?}\nversion:{:?}\nheaders:{:?}\n", connection.request.method, connection.request.uri, connection.request.version, connection.request.headers);
-
+    let mut resp_headers: HashMap<String, String> = HashMap::new();
+    // resp_headers.insert("Content-Length".to_string(), "0".to_string());
+    connection.respond(Response {
+        status: StatusCode::ok(),
+        headers: resp_headers,
+        body: &String::from("Salam"),
+    }).await?;
     Ok(())
 
 }
