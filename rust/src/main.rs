@@ -1,8 +1,6 @@
-use std::collections::HashMap;
-use std::hash::Hash;
-use std::io;
+use std::{io, collections::HashMap};
 use tokio::io::AsyncReadExt;
-use tokio::{io::AsyncWriteExt, net::TcpListener};
+use tokio::net::TcpListener;
 
 type RequestParseResult = Result<Request, Error>;
 
@@ -23,7 +21,7 @@ impl From<std::string::FromUtf8Error> for Error {
         Error::Utf8Error(internal_err)
     }
 }
-
+#[derive(Debug)]
 enum Method {
     GET,
     POST,
@@ -44,7 +42,7 @@ impl From<&str> for Method {
         }
     }
 }
-
+#[derive(Debug)]
 enum Version {
     HTTP1_1,
 }
@@ -65,10 +63,10 @@ struct Request {
     headers: HashMap<String, String>,
     query_params: HashMap<String, String>,
     path_params: HashMap<String, String>,
-    reader: tokio::net::TcpStream,
 }
+
 impl Request {
-    pub async fn new(mut reader: tokio::net::TcpStream) -> RequestParseResult {
+    pub async fn new(reader: &mut tokio::net::TcpStream) -> RequestParseResult {
         let mut first_line: String = String::new();
         let mut headers: HashMap<String, String> = HashMap::new();
         let mut buffer: Vec<u8> = std::vec::Vec::new();
@@ -78,13 +76,14 @@ impl Request {
             if b as char == '\n' {
                 if first_line.is_empty() {
                     // we are reading first line so buffer is first line content
-                    first_line = String::from_utf8(buffer.clone())?;
+                    first_line = String::from_utf8(buffer[0..buffer.len()-2].to_vec())?;
                     buffer.clear();
                 } else {
                     if buffer.len() == 2 && buffer[0] as char == '\r' {
                         break;
                     }
-                    let header_line = String::from_utf8(buffer.clone())?;
+                    let header_line = String::from_utf8( buffer[0..buffer.len()-2].to_vec())?;
+                    buffer.clear();
                     let mut iter = header_line.split(":");
                     let key = match iter.next() {
                         Some(k) => k,
@@ -96,10 +95,11 @@ impl Request {
                     };
                     headers.insert(key.to_string(), value.to_string());
                 }
-            }
+            } 
         }
         // /some?name=value
         let mut first_line_iter = first_line.split(" ");
+        let method: Method = first_line_iter.next().unwrap().into();
         let uri_iter_next_unwrap = first_line_iter.next().unwrap().to_string();
         let mut uri_iter = uri_iter_next_unwrap.split("?");
         let uri = match uri_iter.next() {
@@ -125,20 +125,40 @@ impl Request {
             None => (),
         };
         Ok(Request {
-            method: first_line_iter.next().unwrap().into(),
+            method,
             uri: uri.to_string(),
             version: first_line_iter.next().unwrap().into(),
             headers,
             query_params,
-            reader,
             path_params: HashMap::new(),
         })
     }
 }
 
-async fn handle(mut socket: tokio::net::TcpStream) -> io::Result<()> {
-    socket.write_all(b"Hello World From Rust").await?;
+struct Connection {
+    request: Request,
+    socket: tokio::net::TcpStream,
+}
+
+impl Connection {
+    pub async fn new(mut socket: tokio::net::TcpStream) -> Result<Connection, Error> {
+        let request = Request::new(&mut socket).await?;
+        Ok(Connection {
+            request, socket
+        })
+    }
+
+    pub async fn respond(&self, status: usize, body: &str ) -> Result<(), Error> {
+        Ok(())
+        // self.socket.write_all(body)
+    }
+}
+async fn handle(socket: tokio::net::TcpStream) -> Result<(), Error> {
+    let connection = Connection::new(socket).await?;
+    println!("method: {:?}\nuri:{:?}\nversion:{:?}\nheaders:{:?}\n", connection.request.method, connection.request.uri, connection.request.version, connection.request.headers);
+
     Ok(())
+
 }
 
 #[tokio::main]
