@@ -49,7 +49,7 @@ pub enum Version {
 impl std::fmt::Display for Version {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Version::HTTP1_1 => f.write_str("HTTP/1.1")
+            Version::HTTP1_1 => f.write_str("HTTP/1.1"),
         }
     }
 }
@@ -83,13 +83,13 @@ impl Request {
             if b as char == '\n' {
                 if first_line.is_empty() {
                     // we are reading first line so buffer is first line content
-                    first_line = String::from_utf8(buffer[0..buffer.len()-2].to_vec())?;
+                    first_line = String::from_utf8(buffer[0..buffer.len() - 2].to_vec())?;
                     buffer.clear();
                 } else {
                     if buffer.len() == 2 && buffer[0] as char == '\r' {
                         break;
                     }
-                    let header_line = String::from_utf8( buffer[0..buffer.len()-2].to_vec())?;
+                    let header_line = String::from_utf8(buffer[0..buffer.len() - 2].to_vec())?;
                     buffer.clear();
                     let mut iter = header_line.split(":");
                     let key = match iter.next() {
@@ -98,17 +98,17 @@ impl Request {
                     };
                     let value = match iter.next() {
                         Some(v) => {
-                           if v.chars().nth(0) == Some(' ') {
-                               String::from(v)[1..].to_string()
-                           }  else {
+                            if v.chars().nth(0) == Some(' ') {
+                                String::from(v)[1..].to_string()
+                            } else {
                                 v.to_string()
-                           }
-                        },
+                            }
+                        }
                         None => return Err(Error::ParsingError),
                     };
                     headers.insert(key.to_string(), value.to_string());
                 }
-            } 
+            }
         }
         // /some?name=value
         let mut first_line_iter = first_line.split(" ");
@@ -134,7 +134,7 @@ impl Request {
                     };
                     query_params.insert(key.to_string(), value.to_string());
                 }
-            },
+            }
             None => (),
         };
         Ok(Request {
@@ -160,10 +160,12 @@ pub struct StatusCode {
 
 impl StatusCode {
     pub fn ok() -> Self {
-        StatusCode { code: 200, msg: "OK" }
+        StatusCode {
+            code: 200,
+            msg: "OK",
+        }
     }
 }
-
 
 pub struct Response<'a> {
     pub status: StatusCode,
@@ -174,16 +176,27 @@ pub struct Response<'a> {
 impl Connection {
     pub async fn new(mut socket: tokio::net::TcpStream) -> Result<Connection, Error> {
         let request = Request::new(&mut socket).await?;
-        Ok(Connection {
-            request, socket
-        })
+        Ok(Connection { request, socket })
     }
 
-    pub async fn respond<'a>(&mut self, resp: Response<'a>) -> Result<(), std::io::Error> {
-        self.socket.write_all(format!("{} {} {}\r\n", self.request.version, resp.status.code, resp.status.msg).as_bytes()).await?;
-        print!("{} {} {}\r\n", self.request.version, resp.status.code, resp.status.msg);
-        for (k,v) in resp.headers.iter() {
-            self.socket.write_all(format!("{}: {}\r\n", k, v).as_bytes()).await?;
+    pub async fn respond<'a>(&mut self, resp: Response<'a>) -> Result<(), Error> {
+        self.socket
+            .write_all(
+                format!(
+                    "{} {} {}\r\n",
+                    self.request.version, resp.status.code, resp.status.msg
+                )
+                .as_bytes(),
+            )
+            .await?;
+        print!(
+            "{} {} {}\r\n",
+            self.request.version, resp.status.code, resp.status.msg
+        );
+        for (k, v) in resp.headers.iter() {
+            self.socket
+                .write_all(format!("{}: {}\r\n", k, v).as_bytes())
+                .await?;
             print!("{}: {}\r\n", k, v);
         }
 
