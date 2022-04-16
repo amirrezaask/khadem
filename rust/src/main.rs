@@ -10,13 +10,13 @@ use http::*;
     - radix tree routing -> path parameters feature
 */
 
-async fn handle<'a, F, Fut>(socket: tokio::net::TcpStream, handler: &F) -> Result<(), Error>
+
+async fn handle<'a, F, Output>(socket: tokio::net::TcpStream, handler: &F) -> Result<(), Error>
 where
-    F: Send + Sync + 'static,
-    F: Fn(Connection) -> Fut,
-    Fut: Future<Output = ()> + Send + Sync,
+    F: Fn(Connection) -> Output,
+    Output: Future<Output = ()> + Send + Sync,
 {
-    let mut connection = Connection::new(socket).await?;
+    let connection = Connection::new(socket).await?;
     println!(
         "method: {:?}\nuri:{:?}\nversion:{:?}\nheaders:{:?}\n",
         connection.request.method,
