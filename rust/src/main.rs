@@ -1,5 +1,6 @@
 use std::{collections::HashMap, future::Future, io};
 use tokio::net::TcpListener;
+use tokio::net::TcpStream;
 
 mod http;
 use http::*;
@@ -11,39 +12,6 @@ use http::*;
 */
 
 
-async fn handle<'a, F, Output>(socket: tokio::net::TcpStream, handler: &F) -> Result<(), Error>
-where
-    F: Fn(Connection) -> Output,
-    Output: Future<Output = ()> + Send + Sync,
-{
-    let connection = Connection::new(socket).await?;
-    println!(
-        "method: {:?}\nuri:{:?}\nversion:{:?}\nheaders:{:?}\n",
-        connection.request.method,
-        connection.request.uri,
-        connection.request.version,
-        connection.request.headers
-    );
-    handler(connection).await;
-    Ok(())
-}
-
-struct Server {}
-
-impl Server {
-    pub async fn start<'a, F, Fut>(addr: &str, handler: F) -> Result<(), Error>
-    where
-        F: Send + Sync + 'static,
-        F: Fn(Connection) -> Fut,
-        Fut: Future<Output = ()> + Send + Sync,
-    {
-        let listener = TcpListener::bind(addr).await?;
-        loop {
-            let (socket, _) = listener.accept().await?;
-            handle(socket, &handler).await;
-        }
-    }
-}
 
 async fn custom_handler(mut conn: Connection) -> () {
     conn.respond(Response {
