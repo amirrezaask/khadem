@@ -18,12 +18,12 @@ impl Server {
 
 impl Server {
     async fn handle<CH>(&self, socket: TcpStream, ch: &CH) -> Result<(), Error>
-        where
-            CH: HttpHandler + Send + Sync,
-        {
-            let mut connection = Connection::new(socket).await?;
-            ch.handle_connection(&mut connection).await;
-            Ok(())
+    where
+        CH: HttpHandler + Send + Sync,
+    {
+        let mut connection = Connection::new(socket).await?;
+        ch.handle_connection(&mut connection).await;
+        Ok(())
     }
     pub async fn start<H>(addr: &str, handler: H) -> Result<(), Error>
     where
@@ -35,7 +35,7 @@ impl Server {
             let (socket, _) = listener.accept().await?;
             match server.handle(socket, &handler).await {
                 Ok(()) => (),
-                Err(err) => println!("error in handling request: {:?}", err)
+                Err(err) => println!("error in handling request: {:?}", err),
             };
         }
     }

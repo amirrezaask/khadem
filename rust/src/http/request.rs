@@ -11,7 +11,6 @@ pub enum Error {
     NotFoundError,
 }
 
-
 impl From<std::io::Error> for Error {
     fn from(internal_err: std::io::Error) -> Self {
         Error::IOError(internal_err)

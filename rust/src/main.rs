@@ -1,5 +1,5 @@
-use std::{collections::HashMap, io};
 use async_trait::async_trait;
+use std::{collections::HashMap, io};
 
 mod http;
 use http::*;
@@ -12,7 +12,7 @@ use http::*;
 
 #[derive(Clone)]
 struct CustomHandler {
-    msg: &'static str
+    msg: &'static str,
 }
 #[async_trait]
 impl HttpHandler for CustomHandler {
@@ -31,9 +31,11 @@ impl HttpHandler for CustomHandler {
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
-    let mut router = Router::new(&CustomHandler{msg: "Root"});
-    router.root.insert("/bye", &CustomHandler{msg: "bye"});
-    router.root.insert("/hello/:name", &CustomHandler{msg: "hello"});
-    Server::start("127.0.0.1:8080", LogMiddleware{wrapped: router}).await;
+    let mut router = Router::new(&CustomHandler { msg: "Root" });
+    router.root.insert("/bye", &CustomHandler { msg: "bye" });
+    router
+        .root
+        .insert("/hello/:name", &CustomHandler { msg: "hello" });
+    Server::start("127.0.0.1:8080", LogMiddleware { wrapped: router }).await;
     Ok(())
 }

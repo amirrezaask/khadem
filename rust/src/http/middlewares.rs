@@ -1,7 +1,7 @@
-use async_trait::async_trait;
-use super::Error;
 use super::Connection;
+use super::Error;
 use super::HttpHandler;
+use async_trait::async_trait;
 
 #[derive(Clone)]
 pub struct LogMiddleware<CH>
