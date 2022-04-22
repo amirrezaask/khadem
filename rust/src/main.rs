@@ -13,7 +13,7 @@ use http::*;
 
 struct CustomHandler {}
 #[async_trait]
-impl ConnectionHandler for CustomHandler {
+impl HttpHandler for CustomHandler {
     async fn handle_connection(&self, conn: &mut Connection) -> Result<(), Error> {
         conn.respond(Response {
             status: StatusCode::ok(),

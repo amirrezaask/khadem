@@ -4,14 +4,7 @@ use async_trait::async_trait;
 use tokio::net::{TcpListener, TcpStream};
 
 #[async_trait]
-pub trait HttpHandler: Send + Sync + 'static {
-    async fn handle<CH>(&self, socket: TcpStream, ch: &CH) -> Result<(), Error>
-    where
-        CH: ConnectionHandler + Send + Sync;
-}
-
-#[async_trait]
-pub trait ConnectionHandler {
+pub trait HttpHandler {
     async fn handle_connection(&self, conn: &mut Connection) -> Result<(), Error>;
 }
 
@@ -25,15 +18,15 @@ impl Server {
 
 pub struct LogMiddleware<CH>
 where
-    CH: ConnectionHandler,
+    CH: HttpHandler,
 {
     pub wrapped: CH,
 }
 
 #[async_trait]
-impl<CH> ConnectionHandler for LogMiddleware<CH>
+impl<CH> HttpHandler for LogMiddleware<CH>
 where
-    CH: ConnectionHandler + Sync + Send,
+    CH: HttpHandler + Sync + Send,
 {
     async fn handle_connection(&self, connection: &mut Connection) -> Result<(), Error> {
         println!(
@@ -48,29 +41,27 @@ where
     }
 }
 
-// parse http, create connection, request, call all internal logic, write response
-#[async_trait]
-impl HttpHandler for Server {
-    async fn handle<CH>(&self, socket: TcpStream, ch: &CH) -> Result<(), Error>
-    where
-        CH: ConnectionHandler + Send + Sync,
-    {
-        let mut connection = Connection::new(socket).await?;
-        ch.handle_connection(&mut connection).await;
-        Ok(())
-    }
-}
-
 impl Server {
+    async fn handle<CH>(&self, socket: TcpStream, ch: &CH) -> Result<(), Error>
+        where
+            CH: HttpHandler + Send + Sync,
+        {
+            let mut connection = Connection::new(socket).await?;
+            ch.handle_connection(&mut connection).await;
+            Ok(())
+    }
     pub async fn start<H>(addr: &str, handler: H) -> Result<(), Error>
     where
-        H: ConnectionHandler + Send + Sync,
+        H: HttpHandler + Send + Sync,
     {
         let listener = TcpListener::bind(addr).await?;
         let server = Server::new();
         loop {
             let (socket, _) = listener.accept().await?;
-            server.handle(socket, &handler).await;
+            match server.handle(socket, &handler).await {
+                Ok(()) => (),
+                Err(err) => println!("error in handling request: {:?}", err)
+            };
         }
     }
 }

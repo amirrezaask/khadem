@@ -3,6 +3,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 pub type RequestParseResult = Result<Request, Error>;
 
+#[derive(Debug)]
 pub enum Error {
     ParsingError,
     Utf8Error(std::string::FromUtf8Error),
