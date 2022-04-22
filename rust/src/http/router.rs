@@ -1,25 +1,34 @@
+
 use super::HttpHandler;
 use super::Error;
 use super::Connection;
 use async_trait::async_trait;
-use radix_tree::{Node, Radix};
+use path_tree::PathTree;
+use std::collections::HashMap;
 
 #[derive(Clone)]
 pub struct Router {
-   pub root:  Node<char, &'static (dyn HttpHandler + Send + Sync)>
+   pub root:  PathTree<&'static (dyn HttpHandler + Send + Sync)>
 }
 
 impl Router {
    pub fn new(root_handler: &'static (impl HttpHandler + Sync + Send + Clone) ) -> Router {
-        Router {root: Node::new("/", Some(root_handler))}
+        let mut root: PathTree<&'static (dyn HttpHandler + Sync + Send) > = PathTree::new();
+        root.insert("/", root_handler);
+        Router {root}
    }
 }
 
 #[async_trait]
 impl HttpHandler for Router {
     async fn handle_connection(&self, conn: &mut Connection) -> Result<(), Error> {
-       if let handler = self.root.find(conn.request.uri.clone()).unwrap()  {
-            handler.data.unwrap().handle_connection(conn).await;
+       if let handler = self.root.find(&conn.request.uri).unwrap()  {
+           let mut params = HashMap::<String, String>::new();
+           for kv in handler.1.iter() {
+               params.insert(kv.0.to_string(), kv.1.to_string()); 
+           }
+           conn.request.path_params = params;
+           handler.0.handle_connection(conn).await;
             Ok(())
        } else {
             Err(Error::NotFoundError)

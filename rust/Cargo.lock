@@ -51,7 +51,7 @@ name = "khadem"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "radix-tree",
+ "path-tree",
  "tokio",
 ]
 
@@ -158,6 +158,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "path-tree"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4d036097265640507a68750c543f2bd2f16565c5a9bb9675b1e213b9a422d3aa"
+
+[[package]]
 name = "pin-project-lite"
 version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -180,12 +186,6 @@ checksum = "632d02bff7f874a36f33ea8bb416cd484b90cc66c1194b1a1110d067a7013f58"
 dependencies = [
  "proc-macro2",
 ]
-
-[[package]]
-name = "radix-tree"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d29f77b58a6d2959b0bee5516602e1534cc3c39361fc13c2842c16db50c1c491"
 
 [[package]]
 name = "redox_syscall"

@@ -146,7 +146,7 @@ impl Request {
             version: first_line_iter.next().unwrap().into(),
             headers,
             query_params,
-            path_params: HashMap::new(),
+            path_params: Default::default(),
         })
     }
 }
