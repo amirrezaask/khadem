@@ -1,4 +1,4 @@
-use std::{collections::HashMap, ops::Index};
+use std::collections::HashMap;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 pub type RequestParseResult = Result<Request, Error>;
@@ -8,7 +8,9 @@ pub enum Error {
     ParsingError,
     Utf8Error(std::string::FromUtf8Error),
     IOError(std::io::Error),
+    NotFoundError,
 }
+
 
 impl From<std::io::Error> for Error {
     fn from(internal_err: std::io::Error) -> Self {

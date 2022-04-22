@@ -1,5 +1,6 @@
 use std::{collections::HashMap, io};
 use async_trait::async_trait;
+use radix_tree::Radix;
 
 mod http;
 use http::*;
@@ -10,15 +11,17 @@ use http::*;
     - radix tree routing -> path parameters feature
 */
 
-
-struct CustomHandler {}
+#[derive(Clone)]
+struct CustomHandler {
+    msg: &'static str
+}
 #[async_trait]
 impl HttpHandler for CustomHandler {
     async fn handle_connection(&self, conn: &mut Connection) -> Result<(), Error> {
         conn.respond(Response {
             status: StatusCode::ok(),
             headers: HashMap::new(),
-            body: "Hello From Custom handler",
+            body: self.msg,
         })
         .await
     }
@@ -26,6 +29,8 @@ impl HttpHandler for CustomHandler {
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
-    Server::start("127.0.0.1:8080", LogMiddleware{wrapped: CustomHandler{}}).await;
+    let mut router = Router::new(&CustomHandler{msg: "Root"});
+    router.root.insert("/hello", &CustomHandler{msg: "hello"});
+    Server::start("127.0.0.1:8080", LogMiddleware{wrapped: router}).await;
     Ok(())
 }
