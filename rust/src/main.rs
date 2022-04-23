@@ -7,7 +7,7 @@ use http::*;
 /*
     - user defined handlers[x]
     - middlewares [x]
-    - radix tree routing -> path parameters feature
+    - radix tree routing -> path parameters feature [x]
 */
 
 #[derive(Clone)]
