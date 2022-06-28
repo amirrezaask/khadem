@@ -3,6 +3,7 @@ const http = @import("http.zig");
 const Handler = http.server.Handler;
 const HandlerFn = Handler.Fn;
 const middleware = @import("middlewares.zig");
+const NotFound = http.Response.Status.NotFound;
 
 const RouteHandlerTuple = struct {
     handler: Handler,
@@ -41,7 +42,7 @@ pub fn Router(comptime route_handlers: []const RouteHandlerTuple) Handler {
                     }
                 }
             }
-            return resp.respond(http.Response.Status.NotFound(), null, "Not Found");
+            return resp.respond(.{.status = NotFound, .body = "Not Found"});
         }
     };
     return Handler.init(comptime dumb.handler);

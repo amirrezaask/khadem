@@ -11,6 +11,7 @@ const RouteHandler = khadem.routes.RouteHandler;
 const RouteHandlerFn = khadem.routes.RouteHandlerFn;
 const Router = khadem.routes.Router;
 const LogRequest = khadem.middlewares.LogRequest;
+const Ok = Response.Status.Ok;
 
 pub const io_mode = .evented;
 
@@ -31,8 +32,8 @@ pub fn main() anyerror!void {
     try server.listen();
 }
 fn greetHandler(req: *Request, resp: *Response) anyerror!void {
-    try resp.respond(Response.Status.Ok(), null, req.getQueryParam("name").?);
+    try resp.respond(.{.status = Ok, .body = req.getParam("name").?});
 }
 fn indexHandler(_: *Request, resp: *Response) anyerror!void {
-    try resp.respond(Response.Status.Ok(), null, "index");
+    try resp.respond(.{.status = Ok, .body = "index"});
 }
