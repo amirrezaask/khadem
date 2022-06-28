@@ -7,9 +7,9 @@ const Request = http.Request;
 writer: net.Stream.Writer,
 version: Request.Version,
 
-pub fn respond(self: *Response, status: Status, maybe_headers: ?std.StringHashMap([]const u8), body: []const u8) !void {
-    try self.writer.print("{s} {} {s}\r\n", .{ self.version.asString(), status.code, status.message });
-    if (maybe_headers) |headers| {
+pub fn respond(self: *Response, payload: Payload) !void {
+    try self.writer.print("{s} {} {s}\r\n", .{ self.version.toString(), payload.status.code(), payload.status.toString() });
+    if (payload.headers) |headers| {
         var headers_iter = headers.iterator();
         while (headers_iter.next()) |entry| {
             try self.writer.print("{s}: {s}\n", .{ entry.key_ptr.*, entry.value_ptr.* });
@@ -17,39 +17,32 @@ pub fn respond(self: *Response, status: Status, maybe_headers: ?std.StringHashMa
     }
     try self.writer.print("\r\n", .{});
 
-    _ = try self.writer.write(body);
+    _ = try self.writer.write(payload.body);
 }
-pub const Status = struct {
-    message: []const u8,
-    code: usize,
 
-    pub fn Ok() Status {
-        return Status{ .message = "OK", .code = 200 };
-    }
+pub const Status = enum(usize) {
+    Ok = 200,
+    Created = 201,
+    Accepted = 202,
+    NoContent = 204,
+    NotFound = 404,
+    BadRequest = 400,
+    Forbidden = 403,
+    UnAuthorized = 401,
 
-    pub fn Created() Status {
-        return Status{ .message = "Created", .code = 201 };
-    }
-
-    pub fn Accepted() Status {
-        return Status{ .message = "Accepted", .code = 202 };
-    }
-
-    pub fn NoContent() Status {
-        return Status{ .message = "NoContent", .code = 204 };
+    pub fn code(self: Status) usize {
+        var status = @enumToInt(self);
+        return status;
     }
 
-    pub fn NotFound() Status {
-        return Status{ .message = "Not Found", .code = 404 };
+    pub fn toString(self: Status) []const u8 {
+        var status = @tagName(self);
+        return status;
     }
+};
 
-    pub fn BadRequest() Status {
-        return Status{ .message = "Bad Request", .code = 400 };
-    }
-    pub fn Forbidden() Status {
-        return Status{ .message = "Forbidden", .code = 403 };
-    }
-    pub fn UnAuthorized() Status {
-        return Status{ .message = "UnAuthorized", .code = 401 };
-    }
+pub const Payload = struct {
+    status: Status,
+    body: []const u8,
+    headers: ?std.StringHashMap([]const u8) = undefined,
 };

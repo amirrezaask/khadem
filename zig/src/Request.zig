@@ -19,36 +19,38 @@ pub const ParsingError = error{
 
 pub const Method = enum {
     GET,
+    DELETE,
+    OPTION,
+    PATCH,
     POST,
     PUT,
-    PATCH,
-    OPTION,
-    DELETE,
     pub fn fromString(s: []const u8) !Method {
-        if (std.mem.eql(u8, "GET", s)) return .GET;
-        if (std.mem.eql(u8, "POST", s)) return .POST;
-        if (std.mem.eql(u8, "PUT", s)) return .PUT;
-        if (std.mem.eql(u8, "PATCH", s)) return .PATCH;
-        if (std.mem.eql(u8, "OPTION", s)) return .OPTION;
-        if (std.mem.eql(u8, "DELETE", s)) return .DELETE;
-        return ParsingError.MethodNotValid;
+        var method = std.meta.stringToEnum(Method, s);
+        if (method) |m| {
+            return m;
+        } else {
+            return ParsingError.MethodNotValid;
+        }
     }
 };
 
 pub const Version = enum {
-    @"1.1",
-    @"2",
-
+    @"HTTP/1.1",
+    @"HTTP/2",
     pub fn fromString(s: []const u8) !Version {
-        if (std.mem.eql(u8, "HTTP/1.1", s)) return .@"1.1";
-        if (std.mem.eql(u8, "HTTP/2", s)) return .@"2";
-        return ParsingError.VersionNotValid;
+        var version = std.meta.stringToEnum(Version, s);
+        if (version) |v| {
+            return v;
+        } else {
+            return ParsingError.VersionNotValid;
+        }
     }
-
-    pub fn asString(self: Version) []const u8 {
-        if (self == Version.@"1.1") return "HTTP/1.1";
-        if (self == Version.@"2") return "HTTP/2";
-        unreachable;
+    pub fn toString(self: Version) []const u8 {
+        var version = switch (self) {
+            .@"HTTP/1.1" => "HTTP/1.1",
+            .@"HTTP/2" => "HTTP/2"
+        };
+        return version;
     }
 };
 

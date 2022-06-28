@@ -14,7 +14,7 @@ pub fn build(b: *std.build.Builder) void {
     const exe = b.addExecutable("examples", "src/main.zig");
     exe.addPackage(.{
         .name = "khadem",
-        .path = .{ .path = "../src/http.zig" },
+        .source = .{ .path = "../src/http.zig" },
     });
     exe.setTarget(target);
     exe.setBuildMode(mode);
